@@ -1062,6 +1062,12 @@ FNiagaraTypeDefinition FMonolithNiagaraActions::ResolveNiagaraType(const FString
 FString FMonolithNiagaraActions::SerializeParameterValue(const FNiagaraVariable& Variable, const FNiagaraParameterStore& Store)
 {
 	const FNiagaraTypeDefinition& T = Variable.GetType();
+	// First check if parameter exists in store to avoid accessing invalid offset
+	int32 Offset = Store.IndexOf(Variable);
+	if (Offset == INDEX_NONE)
+	{
+		return TEXT("\"<not_set>\"");
+	}
 	if (T == FNiagaraTypeDefinition::GetFloatDef()) return FString::SanitizeFloat(Store.GetParameterValue<float>(Variable));
 	if (T == FNiagaraTypeDefinition::GetIntDef()) return FString::FromInt(Store.GetParameterValue<int32>(Variable));
 	if (T == FNiagaraTypeDefinition::GetBoolDef())
@@ -1199,6 +1205,11 @@ static void CollectParametersFromStore(const FNiagaraParameterStore& Store, cons
 	TArrayView<const FNiagaraVariableWithOffset> Variables = Store.ReadParameterVariables();
 	for (const FNiagaraVariableWithOffset& VWO : Variables)
 	{
+		// Skip variables with invalid offset (INDEX_NONE = -1)
+		if (VWO.Offset == INDEX_NONE)
+		{
+			continue;
+		}
 		const FNiagaraVariable& Var = VWO;
 		TSharedRef<FJsonObject> P = MakeShared<FJsonObject>();
 		P->SetStringField(TEXT("name"), Var.GetName().ToString());
