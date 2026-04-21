@@ -2,7 +2,8 @@
 #include "MonolithParamSchema.h"
 #include "MonolithAssetUtils.h"
 
-#if WITH_STATETREE
+// StateTreeExtension.h only exists in UE 5.7+
+#if WITH_STATETREE && (ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7)
 #include "StateTree.h"
 #include "StateTreeEditorData.h"
 #include "StateTreeState.h"
@@ -27,6 +28,8 @@
 #include "StructUtils/InstancedStruct.h"
 #include "Editor.h"
 #include "IMonolithGraphFormatter.h"
+
+#if WITH_STATETREE && (ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7)
 
 // ============================================================
 //  Helpers
@@ -390,15 +393,12 @@ namespace
 	}
 }
 
-#endif // WITH_STATETREE
-
 // ============================================================
 //  Registration
 // ============================================================
 
 void FMonolithAIStateTreeActions::RegisterActions(FMonolithToolRegistry& Registry)
 {
-#if WITH_STATETREE
 	// 43. create_state_tree
 	Registry.RegisterAction(TEXT("ai"), TEXT("create_state_tree"),
 		TEXT("Create a new UStateTree asset. Optionally set schema class."),
@@ -736,14 +736,11 @@ void FMonolithAIStateTreeActions::RegisterActions(FMonolithToolRegistry& Registr
 			.Optional(TEXT("formatter"), TEXT("string"), TEXT("Formatter to use: 'blueprint_assist' or 'builtin' (default: auto-detect)"))
 			.Build());
 
-#endif // WITH_STATETREE
 }
 
 // ============================================================
-//  Implementations (all inside WITH_STATETREE)
+//  Implementations
 // ============================================================
-
-#if WITH_STATETREE
 
 // 43. create_state_tree
 FMonolithActionResult FMonolithAIStateTreeActions::HandleCreateStateTree(const TSharedPtr<FJsonObject>& Params)
@@ -3335,4 +3332,13 @@ FMonolithActionResult FMonolithAIStateTreeActions::HandleAutoArrangeST(const TSh
 #endif
 }
 
-#endif // WITH_STATETREE
+#endif // WITH_STATETREE && UE_5_7+
+
+#else // WITH_STATETREE && UE_5_7+
+
+void FMonolithAIStateTreeActions::RegisterActions(FMonolithToolRegistry& Registry)
+{
+	// StateTree actions disabled for UE < 5.7
+}
+
+#endif // WITH_STATETREE && UE_5_7+

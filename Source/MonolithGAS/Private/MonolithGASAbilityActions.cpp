@@ -14,7 +14,9 @@
 #include "UObject/Package.h"
 #include "UObject/SavePackage.h"
 #include "Misc/PackageName.h"
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 #include "K2Node_LatentAbilityCall.h"
+#endif
 #include "K2Node_CallFunction.h"
 #include "K2Node_IfThenElse.h"
 #include "K2Node_Event.h"
@@ -1619,6 +1621,7 @@ FMonolithActionResult FMonolithGASAbilityActions::HandleAddAbilityTaskNode(const
 	int32 PosX, PosY;
 	ParsePosition(Params, PosX, PosY, 400, 0);
 
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 	// Create the latent ability call node
 	UK2Node_LatentAbilityCall* TaskNode = NewObject<UK2Node_LatentAbilityCall>(Graph);
 	// ProxyFactoryFunctionName/ProxyFactoryClass/ProxyClass are protected in UE 5.7 — set via reflection
@@ -1643,6 +1646,9 @@ FMonolithActionResult FMonolithGASAbilityActions::HandleAddAbilityTaskNode(const
 	Result->SetObjectField(TEXT("node"), NodeToResultJson(TaskNode));
 
 	return FMonolithActionResult::Success(Result);
+#else
+	return FMonolithActionResult::Error(TEXT("add_ability_task_node requires UE 5.7+ - UK2Node_LatentAbilityCall not exported in earlier versions"));
+#endif
 }
 
 // ============================================================
@@ -2614,6 +2620,7 @@ FMonolithActionResult FMonolithGASAbilityActions::HandleGetAbilityTaskPins(const
 
 	if (FactoryFunc)
 	{
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 		UK2Node_LatentAbilityCall* TempNode = NewObject<UK2Node_LatentAbilityCall>(TempGraph, NAME_None, RF_Transient);
 		// Protected in UE 5.7 — set via reflection
 		{
@@ -2679,6 +2686,11 @@ FMonolithActionResult FMonolithGASAbilityActions::HandleGetAbilityTaskPins(const
 		Result->SetArrayField(TEXT("exec_pins"), ExecPins);
 
 		TempNode->DestroyNode();
+#else
+		// UK2Node_LatentAbilityCall not exported in UE < 5.7
+		Result->SetStringField(TEXT("factory_function"), FactoryFunc->GetName());
+		Result->SetStringField(TEXT("error"), TEXT("UK2Node_LatentAbilityCall requires UE 5.7+"));
+#endif
 	}
 	else
 	{
@@ -2925,7 +2937,11 @@ FMonolithActionResult FMonolithGASAbilityActions::HandleGetAbilityGraphFlow(cons
 		}
 
 		// Check for latent ability task nodes
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 		if (Node->IsA<UK2Node_LatentAbilityCall>())
+#else
+		if (false) // UK2Node_LatentAbilityCall not exported in UE < 5.7
+#endif
 		{
 			AbilityTaskCount++;
 
@@ -3066,7 +3082,11 @@ FMonolithActionResult FMonolithGASAbilityActions::HandleValidateAbility(const TS
 				if (EventName.Contains(TEXT("ActivateAbility"))) bHasActivateAbility = true;
 			}
 
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 			if (Node->IsA<UK2Node_LatentAbilityCall>())
+#else
+			if (false) // UK2Node_LatentAbilityCall not exported in UE < 5.7
+#endif
 			{
 				AbilityTaskCount++;
 				for (UEdGraphPin* Pin : Node->Pins)
@@ -3510,7 +3530,11 @@ FMonolithActionResult FMonolithGASAbilityActions::HandleValidateAbilityBlueprint
 		if (!Graph) continue;
 		for (UEdGraphNode* Node : Graph->Nodes)
 		{
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 			if (Node && Node->IsA<UK2Node_LatentAbilityCall>())
+#else
+			if (false) // UK2Node_LatentAbilityCall not exported in UE < 5.7
+#endif
 			{
 				bHasAbilityTasks = true;
 				if (!bIsAbilityBP)
@@ -3577,7 +3601,11 @@ FMonolithActionResult FMonolithGASAbilityActions::HandleValidateAbilityBlueprint
 				if (EventName.Contains(TEXT("ActivateAbility"))) bHasActivateAbility = true;
 			}
 
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 			if (Node->IsA<UK2Node_LatentAbilityCall>())
+#else
+			if (false) // UK2Node_LatentAbilityCall not exported in UE < 5.7
+#endif
 			{
 				TaskNodeCount++;
 				for (UEdGraphPin* Pin : Node->Pins)

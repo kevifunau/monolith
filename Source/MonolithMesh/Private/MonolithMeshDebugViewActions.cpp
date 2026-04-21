@@ -21,6 +21,7 @@
 // Highlight material
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Components/StaticMeshComponent.h"
+#include "MaterialDomain.h"
 
 // JSON / file I/O
 #include "Dom/JsonObject.h"

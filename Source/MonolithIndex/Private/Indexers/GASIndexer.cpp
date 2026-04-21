@@ -22,7 +22,10 @@ FString FGASIndexer::JsonToString(TSharedPtr<FJsonObject> JsonObj)
 {
 	FString Out;
 	auto Writer = TJsonWriterFactory<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>::Create(&Out);
-	FJsonSerializer::Serialize(JsonObj, *Writer, true);
+	if (JsonObj)
+	{
+		FJsonSerializer::Serialize(JsonObj.ToSharedRef(), *Writer, true);
+	}
 	return Out;
 }
 

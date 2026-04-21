@@ -14,7 +14,12 @@
 
 // MetaSound Frontend
 #include "MetasoundFrontendDocument.h"
+// MetasoundFrontendNodeClassRegistry.h renamed/restructured in UE 5.5
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 #include "MetasoundFrontendNodeClassRegistry.h"
+#else
+#include "MetasoundFrontendRegistries.h"
+#endif
 
 // IMetaSoundDocumentInterface — used by TScriptInterface in Builder/Editor subsystem APIs
 // MetasoundSource.h typically pulls this in, but include explicitly for Cast<> usage
@@ -23,6 +28,10 @@
 
 // MetaSound Editor
 #include "MetasoundEditorSubsystem.h"
+
+// MetaSound Builder API changed significantly in UE 5.7
+// Disable MetaSound actions for UE < 5.7
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 
 // Engine
 #include "AssetRegistry/IAssetRegistry.h"
@@ -2667,4 +2676,15 @@ FMonolithActionResult FMonolithAudioMetaSoundActions::SetMetaSoundNodeLocation(c
 	return FMonolithActionResult::Success(ResultJson);
 }
 
+#endif // ENGINE >= 5.7
+
 #endif // WITH_METASOUND
+
+#if !(ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7)
+
+void FMonolithAudioMetaSoundActions::RegisterActions(FMonolithToolRegistry& Registry)
+{
+	// MetaSound actions disabled for UE < 5.7 - API changed significantly
+}
+
+#endif // !(ENGINE >= 5.7)

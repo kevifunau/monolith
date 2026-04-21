@@ -1334,7 +1334,11 @@ bool FMonolithMeshProceduralActions::BuildBrokenWall(UDynamicMesh* Mesh, float W
 	NoiseOpts.bApplyAlongNormal = true;
 
 	FGeometryScriptMeshSelection EmptySelection; // empty = full mesh
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 	UGeometryScriptLibrary_MeshDeformFunctions::ApplyPerlinNoiseToMesh2(Cutter, EmptySelection, NoiseOpts);
+#else
+	UGeometryScriptLibrary_MeshDeformFunctions::ApplyPerlinNoiseToMesh(Cutter, EmptySelection, NoiseOpts);
+#endif
 
 	// Boolean subtract the deformed sphere from the wall
 	FGeometryScriptMeshBooleanOptions BoolOpts;
@@ -2721,7 +2725,11 @@ FMonolithActionResult FMonolithMeshProceduralActions::CreateFragments(const TSha
 		NoiseOpts.bApplyAlongNormal = true;
 
 		FGeometryScriptMeshSelection EmptySelection;
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 		UGeometryScriptLibrary_MeshDeformFunctions::ApplyPerlinNoiseToMesh2(WorkMesh, EmptySelection, NoiseOpts);
+#else
+		UGeometryScriptLibrary_MeshDeformFunctions::ApplyPerlinNoiseToMesh(WorkMesh, EmptySelection, NoiseOpts);
+#endif
 	}
 
 	// Split into separate component meshes
@@ -2842,7 +2850,11 @@ FMonolithActionResult FMonolithMeshProceduralActions::CreateTerrainPatch(const T
 		NoiseOpts.bApplyAlongNormal = true;
 
 		FGeometryScriptMeshSelection EmptySelection;
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 		UGeometryScriptLibrary_MeshDeformFunctions::ApplyPerlinNoiseToMesh2(Mesh, EmptySelection, NoiseOpts);
+#else
+		UGeometryScriptLibrary_MeshDeformFunctions::ApplyPerlinNoiseToMesh(Mesh, EmptySelection, NoiseOpts);
+#endif
 
 		CurrentAmp *= Persistence;
 		CurrentFreq *= Lacunarity;

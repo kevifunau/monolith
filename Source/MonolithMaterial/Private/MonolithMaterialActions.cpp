@@ -35,8 +35,16 @@
 #include "Serialization/JsonWriter.h"
 #include "UObject/UnrealType.h"
 #include "MaterialShared.h"
+#include "MaterialDomain.h"
 #include "RHIShaderPlatform.h"
 #include "Misc/Base64.h"
+
+// UE 5.5.4 compatibility: GetMaterialResource uses ERHIFeatureLevel, not EShaderPlatform
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION <= 5
+    #define GetMaterialResourceCompat(Mat, SP) Mat->GetMaterialResource(GMaxRHIFeatureLevel)
+#else
+    #define GetMaterialResourceCompat(Mat, SP) Mat->GetMaterialResource(SP)
+#endif
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "HAL/PlatformFileManager.h"
@@ -2413,7 +2421,12 @@ FMonolithActionResult FMonolithMaterialActions::CreateCustomHLSLNode(const TShar
 		}
 	}
 
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
+	// RebuildOutputs is exported in 5.7+
 	CustomExpr->RebuildOutputs();
+#else
+	// RebuildOutputs not exported in UE < 5.7 - outputs may need manual refresh
+#endif
 	GEditor->EndTransaction();
 
 	auto ResultJson = MakeShared<FJsonObject>();
@@ -3293,7 +3306,7 @@ FMonolithActionResult FMonolithMaterialActions::RecompileMaterial(const TSharedP
 		ResultJson->SetNumberField(TEXT("num_vertex_shader_instructions"), Stats.NumVertexShaderInstructions);
 
 		const EShaderPlatform ShaderPlatform = GShaderPlatformForFeatureLevel[GMaxRHIFeatureLevel];
-		FMaterialResource* MatResource = BaseMat->GetMaterialResource(ShaderPlatform);
+		FMaterialResource* MatResource = GetMaterialResourceCompat(BaseMat, ShaderPlatform);
 		bool bIsCompiled = false;
 		if (MatResource)
 		{
@@ -3386,7 +3399,7 @@ FMonolithActionResult FMonolithMaterialActions::GetCompilationStats(const TShare
 
 	// Get material resource for the current shader platform
 	const EShaderPlatform ShaderPlatform = GShaderPlatformForFeatureLevel[GMaxRHIFeatureLevel];
-	FMaterialResource* MatResource = BaseMat->GetMaterialResource(ShaderPlatform);
+	FMaterialResource* MatResource = GetMaterialResourceCompat(BaseMat, ShaderPlatform);
 	if (MatResource)
 	{
 		bool bIsCompiled = MatResource->IsGameThreadShaderMapComplete();
@@ -5187,7 +5200,11 @@ FMonolithActionResult FMonolithMaterialActions::UpdateCustomHlslNode(const TShar
 	}
 
 	// Rebuild outputs after any structural change
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 	CustomExpr->RebuildOutputs();
+#else
+	// RebuildOutputs not exported in UE < 5.7
+#endif
 
 	Mat->PreEditChange(nullptr);
 	Mat->PostEditChange();
@@ -6170,7 +6187,11 @@ void FMonolithMaterialActions::BuildGraphFromSpec(
 				}
 			}
 
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 			CustomExpr->RebuildOutputs();
+#else
+			// RebuildOutputs not exported in UE < 5.7
+#endif
 			// Mirror Phase 1 empty-key guard: never register a blank key in IdToExpr
 			FString CustomLookupId = !Id.IsEmpty() ? Id : (!CustomUserName.IsEmpty() ? CustomUserName : CustomExpr->GetName());
 			IdToExpr.Add(CustomLookupId, CustomExpr);
@@ -6918,8 +6939,10 @@ FMonolithActionResult FMonolithMaterialActions::ExportFunctionGraph(const TShare
 			PreviewArr.Add(MakeShared<FJsonValueNumber>(FuncInput->PreviewValue.W));
 			InputJson->SetArrayField(TEXT("preview_value"), PreviewArr);
 
-			// Blend input relevance
+			// Blend input relevance (5.7+ only)
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 			InputJson->SetNumberField(TEXT("blend_input_relevance"), static_cast<int32>(FuncInput->BlendInputRelevance));
+#endif
 
 			if (bIncludePositions)
 			{
@@ -8295,7 +8318,7 @@ FMonolithActionResult FMonolithMaterialActions::CreatePbrMaterialFromDisk(const 
 
 	// Sampler count from material resource
 	const EShaderPlatform ShaderPlatform = GShaderPlatformForFeatureLevel[GMaxRHIFeatureLevel];
-	FMaterialResource* MatResource = NewMat->GetMaterialResource(ShaderPlatform);
+	FMaterialResource* MatResource = GetMaterialResourceCompat(NewMat, ShaderPlatform);
 	if (MatResource)
 	{
 		StatsJson->SetNumberField(TEXT("num_samplers"), MatResource->GetSamplerUsage());
@@ -8891,7 +8914,8 @@ FMonolithActionResult FMonolithMaterialActions::GetFunctionInstanceInfo(const TS
 	}
 	ResultJson->SetArrayField(TEXT("texture_collection_overrides"), TexCollArr);
 
-	// --- Parameter collection parameter overrides ---
+	// --- Parameter collection parameter overrides (5.7+ only) ---
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 	TArray<TSharedPtr<FJsonValue>> ParamCollArr;
 	for (const auto& Param : MFI->ParameterCollectionParameterValues)
 	{
@@ -8901,6 +8925,7 @@ FMonolithActionResult FMonolithMaterialActions::GetFunctionInstanceInfo(const TS
 		ParamCollArr.Add(MakeShared<FJsonValueObject>(PJson));
 	}
 	ResultJson->SetArrayField(TEXT("parameter_collection_overrides"), ParamCollArr);
+#endif
 
 	// --- Font parameter overrides ---
 	TArray<TSharedPtr<FJsonValue>> FontArr;
@@ -9023,10 +9048,17 @@ FMonolithActionResult FMonolithMaterialActions::GetFunctionInstanceInfo(const TS
 	ResultJson->SetNumberField(TEXT("output_count"), OutputsJson.Num());
 
 	// Total override count
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 	int32 TotalOverrides = ScalarArr.Num() + VectorArr.Num() + DoubleVecArr.Num()
 		+ TextureArr.Num() + TexCollArr.Num() + ParamCollArr.Num()
 		+ FontArr.Num() + RVTArr.Num() + SVTArr.Num()
 		+ SwitchArr.Num() + MaskArr.Num();
+#else
+	int32 TotalOverrides = ScalarArr.Num() + VectorArr.Num() + DoubleVecArr.Num()
+		+ TextureArr.Num() + TexCollArr.Num()
+		+ FontArr.Num() + RVTArr.Num() + SVTArr.Num()
+		+ SwitchArr.Num() + MaskArr.Num();
+#endif
 	ResultJson->SetNumberField(TEXT("total_overrides"), TotalOverrides);
 
 	return FMonolithActionResult::Success(ResultJson);
@@ -9086,7 +9118,12 @@ FMonolithActionResult FMonolithMaterialActions::RenameFunctionParameterGroup(con
 		return FMonolithActionResult::Error(FString::Printf(TEXT("Asset '%s' is not a MaterialFunctionInterface (type: %s)"), *AssetPath, *LoadedAsset->GetClass()->GetName()));
 	}
 
+	#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 	bool bRenamed = UMaterialEditingLibrary::RenameMaterialFunctionParameterGroup(MatFuncInterface, FName(*OldGroup), FName(*NewGroup));
+#else
+	bool bRenamed = false;
+	// RenameMaterialFunctionParameterGroup not available in UE < 5.7
+#endif
 
 	auto ResultJson = MakeShared<FJsonObject>();
 	ResultJson->SetStringField(TEXT("asset_path"), AssetPath);

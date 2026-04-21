@@ -2,14 +2,19 @@
 #include "MonolithAssetUtils.h"
 #include "MonolithParamSchema.h"
 
+#include "ControlRigBlueprint.h"
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 #include "ControlRigBlueprintLegacy.h"
+#endif
 #include "RigVMModel/RigVMGraph.h"
 #include "RigVMModel/RigVMNode.h"
 #include "RigVMModel/RigVMPin.h"
 #include "RigVMModel/RigVMLink.h"
 #include "RigVMModel/RigVMController.h"
 #include "RigVMModel/RigVMClient.h"
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 #include "RigVMAsset.h"
+#endif
 #include "RigVMModel/Nodes/RigVMUnitNode.h"
 #include "Dom/JsonObject.h"
 #include "Dom/JsonValue.h"
@@ -83,7 +88,7 @@ static URigVMGraph* GetGraphFromBlueprint(UControlRigBlueprint* CRB, const FStri
 	}
 
 	// Search by name across all models
-	FRigVMClient* Client = static_cast<IRigVMAssetInterface*>(CRB)->GetRigVMClient();
+	FRigVMClient* Client = CRB->GetRigVMClient();
 	if (!Client)
 	{
 		OutError = TEXT("Failed to get RigVMClient");
@@ -105,7 +110,7 @@ static URigVMGraph* GetGraphFromBlueprint(UControlRigBlueprint* CRB, const FStri
 
 static URigVMController* GetControllerForGraph(UControlRigBlueprint* CRB, URigVMGraph* Graph, FString& OutError)
 {
-	FRigVMClient* Client = static_cast<IRigVMAssetInterface*>(CRB)->GetRigVMClient();
+	FRigVMClient* Client = CRB->GetRigVMClient();
 	if (!Client)
 	{
 		OutError = TEXT("Failed to get RigVMClient");

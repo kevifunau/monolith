@@ -1158,7 +1158,11 @@ FMonolithActionResult FMonolithAISmartObjectActions::HandleValidateSmartObjectDe
 		return FMonolithActionResult::Error(Error);
 	}
 
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 	TArray<TPair<EMessageSeverity::Type, FText>> ValidationErrors;
+#else
+	TArray<FText> ValidationErrors;
+#endif
 	bool bIsValid = Def->Validate(&ValidationErrors);
 
 	TSharedPtr<FJsonObject> Result = MakeShared<FJsonObject>();
@@ -1169,6 +1173,7 @@ FMonolithActionResult FMonolithAISmartObjectActions::HandleValidateSmartObjectDe
 	TArray<TSharedPtr<FJsonValue>> Issues;
 
 	// Engine validation errors
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 	for (const auto& Err : ValidationErrors)
 	{
 		TSharedPtr<FJsonObject> Issue = MakeShared<FJsonObject>();
@@ -1180,11 +1185,18 @@ FMonolithActionResult FMonolithAISmartObjectActions::HandleValidateSmartObjectDe
 		case EMessageSeverity::Warning:
 			Issue->SetStringField(TEXT("severity"), TEXT("warning"));
 			break;
-		default:
+		case EMessageSeverity::Info:
 			Issue->SetStringField(TEXT("severity"), TEXT("info"));
 			break;
 		}
 		Issue->SetStringField(TEXT("message"), Err.Value.ToString());
+#else
+	for (const FText& Err : ValidationErrors)
+	{
+		TSharedPtr<FJsonObject> Issue = MakeShared<FJsonObject>();
+		Issue->SetStringField(TEXT("severity"), TEXT("error"));
+		Issue->SetStringField(TEXT("message"), Err.ToString());
+#endif
 		Issues.Add(MakeShared<FJsonValueObject>(Issue));
 	}
 

@@ -49,7 +49,10 @@
 #include "SmartObjectSubsystem.h"
 #include "SmartObjectDefinition.h"
 #include "SmartObjectComponent.h"
+// SmartObjectRequestTypes.h only exists in UE 5.7+
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 #include "SmartObjectRequestTypes.h"
+#endif
 #include "StructUtils/InstancedStruct.h"
 #endif
 

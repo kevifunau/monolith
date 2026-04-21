@@ -38,9 +38,15 @@
 #include "Rig/IKRigSkeleton.h"
 #include "RigEditor/IKRigController.h"
 #include "Retargeter/IKRetargeter.h"
+// IKRetargetChainMapping.h only exists in UE 5.7+
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 #include "Retargeter/IKRetargetChainMapping.h"
+#endif
 #include "RetargetEditor/IKRetargeterController.h"
+#include "ControlRigBlueprint.h"
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 #include "ControlRigBlueprintLegacy.h"
+#endif
 #include "Rigs/RigHierarchy.h"
 #include "Rigs/RigHierarchyElements.h"
 #include "Rigs/RigHierarchyDefines.h"
@@ -4134,19 +4140,25 @@ FMonolithActionResult FMonolithAnimationActions::HandleGetIKRigInfo(const TShare
 	// Solvers
 	TArray<TSharedPtr<FJsonValue>> SolversArr;
 	const int32 NumSolvers = C->GetNumSolvers();
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 	const TArray<FInstancedStruct>& SolverStructs = Asset->GetSolverStructs();
+#endif
 	for (int32 i = 0; i < NumSolvers; ++i)
 	{
 		TSharedPtr<FJsonObject> SolverObj = MakeShared<FJsonObject>();
 		SolverObj->SetNumberField(TEXT("index"), i);
 		SolverObj->SetBoolField(TEXT("enabled"), C->GetSolverEnabled(i));
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 		SolverObj->SetStringField(TEXT("start_bone"), C->GetStartBone(i).ToString());
+#endif
 
 		FString TypeName = TEXT("Unknown");
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 		if (SolverStructs.IsValidIndex(i) && SolverStructs[i].GetScriptStruct())
 		{
 			TypeName = SolverStructs[i].GetScriptStruct()->GetName();
 		}
+#endif
 		SolverObj->SetStringField(TEXT("type"), TypeName);
 		SolverObj->SetStringField(TEXT("label"), C->GetSolverUniqueName(i));
 		SolversArr.Add(MakeShared<FJsonValueObject>(SolverObj));
@@ -4204,7 +4216,17 @@ FMonolithActionResult FMonolithAnimationActions::HandleAddIKSolver(const TShared
 		SolverType = FString::Printf(TEXT("/Script/IKRig.%s"), *SolverType);
 	}
 
-	int32 SolverIdx = C->AddSolver(SolverType);
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
+	UClass* SolverClass = LoadObject<UClass>(nullptr, *SolverType);
+	if (!SolverClass)
+	{
+		return FMonolithActionResult::Error(FString::Printf(TEXT("Failed to load solver class '%s'"), *SolverType));
+	}
+	int32 SolverIdx = C->AddSolver(SolverClass);
+#else
+	int32 SolverIdx = -1;
+	// AddSolver with FString signature not available in UE < 5.7
+#endif
 	if (SolverIdx < 0)
 	{
 		return FMonolithActionResult::Error(FString::Printf(TEXT("Failed to add solver of type '%s' — check type name"), *SolverType));
@@ -4215,7 +4237,9 @@ FMonolithActionResult FMonolithAnimationActions::HandleAddIKSolver(const TShared
 	bool bStartBoneSet = false;
 	if (Params->TryGetStringField(TEXT("root_bone"), RootBone) && !RootBone.IsEmpty())
 	{
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 		bStartBoneSet = C->SetStartBone(FName(*RootBone), SolverIdx);
+#endif
 	}
 
 	// Optional goals array
@@ -4518,7 +4542,7 @@ FMonolithActionResult FMonolithAnimationActions::HandleAddStateToMachine(const T
 	UAnimStateNode* NewNode = FEdGraphSchemaAction_NewStateNode::SpawnNodeFromTemplate<UAnimStateNode>(
 		SMGraph,
 		NewObject<UAnimStateNode>(SMGraph),
-		FVector2f(static_cast<float>(PosX), static_cast<float>(PosY)),
+		FVector2D(static_cast<double>(PosX), static_cast<double>(PosY)),
 		/*bSelectNewNode=*/false);
 
 	if (!NewNode)

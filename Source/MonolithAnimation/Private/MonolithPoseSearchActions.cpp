@@ -2,6 +2,10 @@
 #include "MonolithAssetUtils.h"
 #include "MonolithParamSchema.h"
 
+// PoseSearch specific channel headers moved to Private in UE 5.5, not exported for external modules
+// Disable PoseSearch write actions for UE < 5.7 - read actions still available via public headers
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
+
 #include "PoseSearch/PoseSearchDatabase.h"
 #include "PoseSearch/PoseSearchSchema.h"
 #include "PoseSearch/PoseSearchFeatureChannel.h"
@@ -1021,3 +1025,80 @@ FMonolithActionResult FMonolithPoseSearchActions::HandleSetDatabaseSearchMode(co
 
 	return FMonolithActionResult::Success(Root);
 }
+
+#else // UE >= 5.7
+
+// PoseSearch specific channel headers not exported in UE < 5.7
+// Provide empty RegisterActions implementation
+
+void FMonolithPoseSearchActions::RegisterActions(FMonolithToolRegistry& Registry)
+{
+	// PoseSearch write actions disabled for UE < 5.7 - specific channel headers not exported
+}
+
+FMonolithActionResult FMonolithPoseSearchActions::HandleGetPoseSearchSchema(const TSharedPtr<FJsonObject>& Params)
+{
+	return FMonolithActionResult::Error(TEXT("PoseSearch actions require UE 5.7+ - channel headers not exported in earlier versions"));
+}
+
+FMonolithActionResult FMonolithPoseSearchActions::HandleGetPoseSearchDatabase(const TSharedPtr<FJsonObject>& Params)
+{
+	return FMonolithActionResult::Error(TEXT("PoseSearch actions require UE 5.7+ - channel headers not exported in earlier versions"));
+}
+
+FMonolithActionResult FMonolithPoseSearchActions::HandleAddDatabaseSequence(const TSharedPtr<FJsonObject>& Params)
+{
+	return FMonolithActionResult::Error(TEXT("PoseSearch actions require UE 5.7+ - channel headers not exported in earlier versions"));
+}
+
+FMonolithActionResult FMonolithPoseSearchActions::HandleRemoveDatabaseSequence(const TSharedPtr<FJsonObject>& Params)
+{
+	return FMonolithActionResult::Error(TEXT("PoseSearch actions require UE 5.7+ - channel headers not exported in earlier versions"));
+}
+
+FMonolithActionResult FMonolithPoseSearchActions::HandleGetDatabaseStats(const TSharedPtr<FJsonObject>& Params)
+{
+	return FMonolithActionResult::Error(TEXT("PoseSearch actions require UE 5.7+ - channel headers not exported in earlier versions"));
+}
+
+FMonolithActionResult FMonolithPoseSearchActions::HandleCreatePoseSearchSchema(const TSharedPtr<FJsonObject>& Params)
+{
+	return FMonolithActionResult::Error(TEXT("PoseSearch actions require UE 5.7+ - channel headers not exported in earlier versions"));
+}
+
+FMonolithActionResult FMonolithPoseSearchActions::HandleCreatePoseSearchDatabase(const TSharedPtr<FJsonObject>& Params)
+{
+	return FMonolithActionResult::Error(TEXT("PoseSearch actions require UE 5.7+ - channel headers not exported in earlier versions"));
+}
+
+FMonolithActionResult FMonolithPoseSearchActions::HandleSetDatabaseSequenceProperties(const TSharedPtr<FJsonObject>& Params)
+{
+	return FMonolithActionResult::Error(TEXT("PoseSearch actions require UE 5.7+ - channel headers not exported in earlier versions"));
+}
+
+FMonolithActionResult FMonolithPoseSearchActions::HandleAddSchemaChannel(const TSharedPtr<FJsonObject>& Params)
+{
+	return FMonolithActionResult::Error(TEXT("PoseSearch actions require UE 5.7+ - channel headers not exported in earlier versions"));
+}
+
+FMonolithActionResult FMonolithPoseSearchActions::HandleRemoveSchemaChannel(const TSharedPtr<FJsonObject>& Params)
+{
+	return FMonolithActionResult::Error(TEXT("PoseSearch actions require UE 5.7+ - channel headers not exported in earlier versions"));
+}
+
+FMonolithActionResult FMonolithPoseSearchActions::HandleSetChannelWeight(const TSharedPtr<FJsonObject>& Params)
+{
+	return FMonolithActionResult::Error(TEXT("PoseSearch actions require UE 5.7+ - channel headers not exported in earlier versions"));
+}
+
+FMonolithActionResult FMonolithPoseSearchActions::HandleRebuildPoseSearchIndex(const TSharedPtr<FJsonObject>& Params)
+{
+	return FMonolithActionResult::Error(TEXT("PoseSearch actions require UE 5.7+ - channel headers not exported in earlier versions"));
+}
+
+FMonolithActionResult FMonolithPoseSearchActions::HandleSetDatabaseSearchMode(const TSharedPtr<FJsonObject>& Params)
+{
+	return FMonolithActionResult::Error(TEXT("PoseSearch actions require UE 5.7+ - channel headers not exported in earlier versions"));
+}
+
+#endif // UE >= 5.7

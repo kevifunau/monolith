@@ -19,7 +19,9 @@
 #include "UObject/SavePackage.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Misc/PackageName.h"
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 #include "K2Node_LatentAbilityCall.h"
+#endif
 #include "Abilities/Tasks/AbilityTask_WaitTargetData.h"
 #include "EdGraphSchema_K2.h"
 #include "K2Node_CallFunction.h"
@@ -520,6 +522,7 @@ FMonolithActionResult FMonolithGASTargetActions::HandleAddTargetingToAbility(con
 	}
 
 	// Create the WaitTargetData ability task node via UK2Node_LatentAbilityCall
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 	UK2Node_LatentAbilityCall* WaitTargetNode = NewObject<UK2Node_LatentAbilityCall>(EventGraph);
 	// ProxyFactoryFunctionName/ProxyFactoryClass/ProxyClass are protected in UE 5.7 — set via reflection
 	{
@@ -537,6 +540,10 @@ FMonolithActionResult FMonolithGASTargetActions::HandleAddTargetingToAbility(con
 	WaitTargetNode->CreateNewGuid();
 	WaitTargetNode->PostPlacedNewNode();
 	WaitTargetNode->AllocateDefaultPins();
+#else
+	// UK2Node_LatentAbilityCall not exported in UE < 5.7
+	return FMonolithActionResult::Error(TEXT("add_wait_target_data_task requires UE 5.7+ - UK2Node_LatentAbilityCall not exported in earlier versions"));
+#endif
 
 	// Compile to ensure graph integrity
 	FKismetEditorUtilities::CompileBlueprint(BP, EBlueprintCompileOptions::SkipGarbageCollection);
@@ -545,7 +552,11 @@ FMonolithActionResult FMonolithGASTargetActions::HandleAddTargetingToAbility(con
 		FString::Printf(TEXT("Added WaitTargetData task to ability '%s'"), *AbilityPath));
 	Result->SetStringField(TEXT("target_actor_class"), TargetActorClass->GetPathName());
 	Result->SetStringField(TEXT("confirm_type"), ConfirmTypeStr);
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 	Result->SetStringField(TEXT("node_type"), TEXT("UK2Node_LatentAbilityCall"));
+#else
+	Result->SetStringField(TEXT("node_type"), TEXT("NotAvailable"));
+#endif
 
 	return FMonolithActionResult::Success(Result);
 }
@@ -738,6 +749,7 @@ FMonolithActionResult FMonolithGASTargetActions::HandleValidateTargeting(const T
 			if (!Node) continue;
 
 			// Check for UK2Node_LatentAbilityCall with WaitTargetData
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 			UK2Node_LatentAbilityCall* LatentNode = Cast<UK2Node_LatentAbilityCall>(Node);
 			if (LatentNode)
 			{
@@ -768,6 +780,9 @@ FMonolithActionResult FMonolithGASTargetActions::HandleValidateTargeting(const T
 					}
 				}
 			}
+#else
+			// UK2Node_LatentAbilityCall not exported in UE < 5.7 - skip check
+#endif
 
 			// Also check CallFunction nodes that might reference WaitTargetData
 			UK2Node_CallFunction* CallNode = Cast<UK2Node_CallFunction>(Node);
@@ -789,6 +804,7 @@ FMonolithActionResult FMonolithGASTargetActions::HandleValidateTargeting(const T
 		if (!Graph) continue;
 		for (UEdGraphNode* Node : Graph->Nodes)
 		{
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 			UK2Node_LatentAbilityCall* LatentNode = Cast<UK2Node_LatentAbilityCall>(Node);
 			if (LatentNode)
 			{
@@ -803,6 +819,7 @@ FMonolithActionResult FMonolithGASTargetActions::HandleValidateTargeting(const T
 					WaitTargetDataCount++;
 				}
 			}
+#endif
 		}
 	}
 

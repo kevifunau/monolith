@@ -5,6 +5,7 @@
 #include "WidgetBlueprintFactory.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "UObject/SavePackage.h"
+#include "Kismet2/BlueprintEditorUtils.h"
 
 void FMonolithUIActions::RegisterActions(FMonolithToolRegistry& Registry)
 {
@@ -481,7 +482,17 @@ FMonolithActionResult FMonolithUIActions::HandleRemoveWidget(const TSharedPtr<FJ
 
     TSet<UWidget*> WidgetsToDelete;
     WidgetsToDelete.Add(Widget);
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
     FWidgetBlueprintEditorUtils::DeleteWidgets(WBP, WidgetsToDelete, FWidgetBlueprintEditorUtils::EDeleteWidgetWarningType::DeleteSilently);
+#else
+    // DeleteWidgets requires FWidgetBlueprintEditor in 5.5 - use manual cleanup
+    // If widget is exposed as variable, clean up variable nodes first
+    if (Widget->bIsVariable)
+    {
+        FBlueprintEditorUtils::RemoveVariableNodes(WBP, Widget->GetFName());
+    }
+    WBP->WidgetTree->RemoveWidget(Widget);
+#endif
 
     FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WBP);
 

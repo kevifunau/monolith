@@ -915,10 +915,12 @@ FMonolithActionResult FMonolithUIAnimationActions::HandleRemoveAnimation(const T
     // AnimationBindings live on the UWidgetAnimation itself, not the WBP.
     // Since we're removing the animation entirely, its bindings go with it.
 
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
     if (WBP->WidgetVariableNameToGuidMap.Contains(FName(*AnimationName)))
     {
         WBP->OnVariableRemoved(FName(*AnimationName));
     }
+#endif
 
     // Remove the animation object
     WBP->Animations.RemoveAt(FoundIndex);

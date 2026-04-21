@@ -73,8 +73,10 @@ const TMap<FString, UClass*>& FMonolithAudioSoundCueActions::GetNodeTypeRegistry
 		Registry.Add(TEXT("DistanceCrossFade"),    USoundNodeDistanceCrossFade::StaticClass());
 		Registry.Add(TEXT("ParamCrossFade"),        USoundNodeParamCrossFade::StaticClass());
 		Registry.Add(TEXT("Enveloper"),            USoundNodeEnveloper::StaticClass());
+		#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 		Registry.Add(TEXT("Oscillator"),           USoundNodeOscillator::StaticClass());
 		Registry.Add(TEXT("Doppler"),              USoundNodeDoppler::StaticClass());
+#endif
 		Registry.Add(TEXT("SoundClass"),           USoundNodeSoundClass::StaticClass());
 		Registry.Add(TEXT("Mature"),               USoundNodeMature::StaticClass());
 		Registry.Add(TEXT("QualityLevel"),         USoundNodeQualityLevel::StaticClass());

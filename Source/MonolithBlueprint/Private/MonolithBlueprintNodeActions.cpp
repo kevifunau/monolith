@@ -31,6 +31,7 @@
 #include "K2Node_FormatText.h"
 #include "K2Node_MakeArray.h"
 #include "K2Node_Select.h"
+#include "NodeDependingOnEnumInterface.h"
 #include "EdGraphNode_Comment.h"
 #include "EdGraphSchema_K2.h"
 #include "Engine/TimelineTemplate.h"
@@ -825,7 +826,12 @@ FMonolithActionResult FMonolithBlueprintNodeActions::HandleAddNode(const TShared
 		}
 
 		UK2Node_SwitchEnum* SwitchNode = NewObject<UK2Node_SwitchEnum>(Graph);
-		SwitchNode->SetEnum(FoundEnum);
+		// UE 5.5.4 compatibility: SetEnum is not exported, use INodeDependingOnEnumInterface::ReloadEnum
+		INodeDependingOnEnumInterface* EnumInterface = Cast<INodeDependingOnEnumInterface>(SwitchNode);
+		if (EnumInterface)
+		{
+			EnumInterface->ReloadEnum(FoundEnum);
+		}
 		SwitchNode->NodePosX = PosX;
 		SwitchNode->NodePosY = PosY;
 		Graph->AddNode(SwitchNode, true, false);

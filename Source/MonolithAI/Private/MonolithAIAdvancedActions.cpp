@@ -620,10 +620,15 @@ FMonolithActionResult FMonolithAIAdvancedActions::HandleGetMassEntityStats(const
 	const FMassEntityManager& EntityManager = MassSubsystem->GetEntityManager();
 
 	// FMassEntityManager doesn't expose entity/archetype counts directly.
-	// Use GetMatchingArchetypes with empty requirements to count archetypes.
+	// GetMatchingArchetypes is protected in UE 5.5 - use alternate approach
 	TArray<FMassArchetypeHandle> AllArchetypes;
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 	FMassFragmentRequirements EmptyReqs;
 	EntityManager.GetMatchingArchetypes(EmptyReqs, AllArchetypes);
+#else
+	// GetMatchingArchetypes protected in UE < 5.7 - cannot access directly
+	AllArchetypes.Empty();
+#endif
 
 	TSharedPtr<FJsonObject> Result = MakeShared<FJsonObject>();
 	Result->SetNumberField(TEXT("num_archetypes"), AllArchetypes.Num());

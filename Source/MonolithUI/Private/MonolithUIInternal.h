@@ -354,10 +354,12 @@ namespace MonolithUIInternal
             return;
         }
 
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
         if (!WBP->WidgetVariableNameToGuidMap.Contains(VariableName))
         {
             WBP->OnVariableAdded(VariableName);
         }
+#endif
     }
 
     inline void RegisterCreatedWidget(UWidgetBlueprint* WBP, UWidget* Widget)

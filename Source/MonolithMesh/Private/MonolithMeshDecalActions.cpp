@@ -18,6 +18,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/Material.h"
+#include "MaterialDomain.h"
 #include "CollisionQueryParams.h"
 #include "WorldCollision.h"
 #include "Dom/JsonObject.h"

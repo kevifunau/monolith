@@ -251,6 +251,45 @@ namespace MonolithNiagaraHelpers
 			}
 		}
 	}
+
+	// Version-compatible wrapper for FNiagaraStackGraphUtilities::GetStackFunctionInputs
+	// In UE < 5.7, this function is not exported, so we use our local fallback
+	void GetStackFunctionInputsCompat(const UNiagaraNodeFunctionCall& Node, TArray<FNiagaraVariable>& OutInputs,
+		FCompileConstantResolver& Resolver, FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions Options,
+		bool bIgnoreDisabled)
+	{
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
+		FNiagaraStackGraphUtilities::GetStackFunctionInputs(Node, OutInputs, Resolver, Options, bIgnoreDisabled);
+#else
+		// Fallback: iterate pins directly (same as local GetStackFunctionInputs)
+		GetStackFunctionInputs(Node, OutInputs);
+#endif
+	}
+
+	// Version-compatible wrapper for FNiagaraStackGraphUtilities::GetStackFunctionStaticSwitchPins
+	void GetStackFunctionStaticSwitchPinsCompat(const UNiagaraNodeFunctionCall& Node,
+		TArray<UEdGraphPin*>& OutInputPins, TSet<UEdGraphPin*>& OutHiddenPins, FCompileConstantResolver& Resolver)
+	{
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
+		FNiagaraStackGraphUtilities::GetStackFunctionStaticSwitchPins(Node, OutInputPins, OutHiddenPins, Resolver);
+#else
+		// Fallback: find static switch pins by checking pin type
+		OutInputPins.Reset();
+		OutHiddenPins.Reset();
+		for (UEdGraphPin* Pin : Node.Pins)
+		{
+			if (Pin->Direction == EGPD_Input && !Pin->bHidden)
+			{
+				FNiagaraTypeDefinition TypeDef = UEdGraphSchema_Niagara::PinToTypeDefinition(Pin);
+				if (TypeDef == FNiagaraTypeDefinition::GetBoolDef() || 
+					Pin->PinName.ToString().Contains(TEXT("StaticSwitch")))
+				{
+					OutInputPins.Add(Pin);
+				}
+			}
+		}
+#endif
+	}
 	// Strip "Module." prefix from engine input names for consistent short names.
 	// The engine's GetStackFunctionInputs returns "Module.Gravity" but all our write actions
 	// use the short form "Gravity" (CreateAliasedModuleParameterHandle adds the namespace).
@@ -2515,14 +2554,14 @@ FMonolithActionResult FMonolithNiagaraActions::HandleGetModuleInputs(const TShar
 	{
 		FVersionedNiagaraEmitter VE = System->GetEmitterHandles()[EmitterIdx].GetInstance();
 		FCompileConstantResolver Resolver(VE, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*ModuleNode, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*ModuleNode, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 	else
 	{
 		// System-level module (no emitter) — use system resolver
 		FCompileConstantResolver Resolver(System, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*ModuleNode, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*ModuleNode, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 
@@ -2609,13 +2648,13 @@ FMonolithActionResult FMonolithNiagaraActions::HandleGetModuleInputs(const TShar
 		{
 			FVersionedNiagaraEmitter VE = System->GetEmitterHandles()[EmitterIdx].GetInstance();
 			FCompileConstantResolver Resolver(VE, FoundUsage);
-			FNiagaraStackGraphUtilities::GetStackFunctionStaticSwitchPins(
+			MonolithNiagaraHelpers::GetStackFunctionStaticSwitchPinsCompat(
 				*ModuleNode, StaticSwitchPins, HiddenSwitchPins, Resolver);
 		}
 		else
 		{
 			FCompileConstantResolver Resolver(System, FoundUsage);
-			FNiagaraStackGraphUtilities::GetStackFunctionStaticSwitchPins(
+			MonolithNiagaraHelpers::GetStackFunctionStaticSwitchPinsCompat(
 				*ModuleNode, StaticSwitchPins, HiddenSwitchPins, Resolver);
 		}
 		const UEdGraphSchema_Niagara* SwitchSchema = GetDefault<UEdGraphSchema_Niagara>();
@@ -2942,13 +2981,13 @@ FMonolithActionResult FMonolithNiagaraActions::HandleSetModuleInputValue(const T
 	{
 		FVersionedNiagaraEmitter VE = System->GetEmitterHandles()[EmitterIdx].GetInstance();
 		FCompileConstantResolver Resolver(VE, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 	else
 	{
 		FCompileConstantResolver Resolver(System, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 
@@ -3097,13 +3136,13 @@ FMonolithActionResult FMonolithNiagaraActions::HandleSetModuleInputBinding(const
 	{
 		FVersionedNiagaraEmitter VE = System->GetEmitterHandles()[EmitterIdx].GetInstance();
 		FCompileConstantResolver Resolver(VE, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 	else
 	{
 		FCompileConstantResolver Resolver(System, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 
@@ -3157,7 +3196,13 @@ FMonolithActionResult FMonolithNiagaraActions::HandleSetModuleInputBinding(const
 	UNiagaraGraph* Graph = MN->GetNiagaraGraph();
 	TSet<FNiagaraVariableBase> KnownParams;
 	if (Graph) MonolithNiagaraHelpers::GetParametersForContext(Graph, *System, KnownParams);
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 7
 	FNiagaraStackGraphUtilities::SetLinkedParameterValueForFunctionInput(OP, LinkedParam, KnownParams);
+#else
+	// SetLinkedParameterValueForFunctionInput not available in UE < 5.7
+	// SetDefaultValue is not available on UEdGraphPin - skip linking
+	UE_LOG(LogMonolithNiagara, Warning, TEXT("set_module_input_binding requires UE 5.7+ for SetLinkedParameterValueForFunctionInput"));
+#endif
 
 	GEditor->EndTransaction();
 	System->RequestCompile(false);
@@ -3290,13 +3335,13 @@ FMonolithActionResult FMonolithNiagaraActions::HandleSetModuleInputDI(const TSha
 	{
 		FVersionedNiagaraEmitter VE = System->GetEmitterHandles()[EmitterIdx].GetInstance();
 		FCompileConstantResolver Resolver(VE, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 	else
 	{
 		FCompileConstantResolver Resolver(System, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 
@@ -4582,13 +4627,13 @@ FMonolithActionResult FMonolithNiagaraActions::HandleSetCurveValue(const TShared
 	{
 		FVersionedNiagaraEmitter VE = System->GetEmitterHandles()[CurveEmitterIdx].GetInstance();
 		FCompileConstantResolver Resolver(VE, CurveFoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 	else
 	{
 		FCompileConstantResolver Resolver(System, CurveFoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 
@@ -6325,13 +6370,13 @@ FMonolithActionResult FMonolithNiagaraActions::HandleGetModuleInputValue(const T
 	{
 		FVersionedNiagaraEmitter VE = System->GetEmitterHandles()[EmitterIdx].GetInstance();
 		FCompileConstantResolver Resolver(VE, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 	else
 	{
 		FCompileConstantResolver Resolver(System, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 
@@ -6521,13 +6566,13 @@ FMonolithActionResult FMonolithNiagaraActions::HandleConfigureCurveKeys(const TS
 	{
 		FVersionedNiagaraEmitter VE = System->GetEmitterHandles()[EmitterIdx].GetInstance();
 		FCompileConstantResolver Resolver(VE, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 	else
 	{
 		FCompileConstantResolver Resolver(System, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 
@@ -6748,13 +6793,13 @@ FMonolithActionResult FMonolithNiagaraActions::HandleConfigureDataInterface(cons
 	{
 		FVersionedNiagaraEmitter VE = System->GetEmitterHandles()[EmitterIdx].GetInstance();
 		FCompileConstantResolver Resolver(VE, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 	else
 	{
 		FCompileConstantResolver Resolver(System, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 
@@ -7302,7 +7347,7 @@ FMonolithActionResult FMonolithNiagaraActions::HandleExportSystemSpec(const TSha
 					{
 						FVersionedNiagaraEmitter VE = System->GetEmitterHandles()[ExportEmitterIdx].GetInstance();
 						FCompileConstantResolver Resolver(VE, Usage);
-						FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, ModInputs, Resolver,
+						MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, ModInputs, Resolver,
 							FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 					}
 
@@ -7352,7 +7397,7 @@ FMonolithActionResult FMonolithNiagaraActions::HandleExportSystemSpec(const TSha
 					{
 						FVersionedNiagaraEmitter VE = System->GetEmitterHandles()[ExportEmitterIdx].GetInstance();
 						FCompileConstantResolver SwitchResolver(VE, Usage);
-						FNiagaraStackGraphUtilities::GetStackFunctionStaticSwitchPins(
+						MonolithNiagaraHelpers::GetStackFunctionStaticSwitchPinsCompat(
 							*MN, StaticSwitchPins, HiddenSwitchPins, SwitchResolver);
 					}
 					if (StaticSwitchPins.Num() > 0)
@@ -7427,13 +7472,13 @@ FMonolithActionResult FMonolithNiagaraActions::HandleAddDynamicInput(const TShar
 	{
 		FVersionedNiagaraEmitter VE = System->GetEmitterHandles()[EmitterIdx].GetInstance();
 		FCompileConstantResolver Resolver(VE, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 	else
 	{
 		FCompileConstantResolver Resolver(System, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 
@@ -7495,13 +7540,13 @@ FMonolithActionResult FMonolithNiagaraActions::HandleAddDynamicInput(const TShar
 	{
 		FVersionedNiagaraEmitter VE2 = System->GetEmitterHandles()[EmitterIdx].GetInstance();
 		FCompileConstantResolver DynResolver(VE2, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*OutDynNode, DynNodeInputs, DynResolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*OutDynNode, DynNodeInputs, DynResolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 	else
 	{
 		FCompileConstantResolver DynResolver(System, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*OutDynNode, DynNodeInputs, DynResolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*OutDynNode, DynNodeInputs, DynResolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 	for (const FNiagaraVariable& In : DynNodeInputs)
@@ -8344,13 +8389,13 @@ FMonolithActionResult FMonolithNiagaraActions::HandleListDynamicInputs(const TSh
 	{
 		FVersionedNiagaraEmitter VE = System->GetEmitterHandles()[EmitterIdx].GetInstance();
 		FCompileConstantResolver Resolver(VE, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 	else
 	{
 		FCompileConstantResolver Resolver(System, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 
@@ -8422,13 +8467,13 @@ namespace
 		{
 			FVersionedNiagaraEmitter VE = System->GetEmitterHandles()[EmitterIdx].GetInstance();
 			FCompileConstantResolver Resolver(VE, Usage);
-			FNiagaraStackGraphUtilities::GetStackFunctionInputs(*FuncNode, Inputs, Resolver,
+			MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*FuncNode, Inputs, Resolver,
 				FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 		}
 		else
 		{
 			FCompileConstantResolver Resolver(System, Usage);
-			FNiagaraStackGraphUtilities::GetStackFunctionInputs(*FuncNode, Inputs, Resolver,
+			MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*FuncNode, Inputs, Resolver,
 				FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 		}
 
@@ -8670,13 +8715,13 @@ FMonolithActionResult FMonolithNiagaraActions::HandleRemoveDynamicInput(const TS
 		{
 			FVersionedNiagaraEmitter VE = System->GetEmitterHandles()[EmitterIdx].GetInstance();
 			FCompileConstantResolver Resolver(VE, FoundUsage);
-			FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+			MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 				FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 		}
 		else
 		{
 			FCompileConstantResolver Resolver(System, FoundUsage);
-			FNiagaraStackGraphUtilities::GetStackFunctionInputs(*MN, Inputs, Resolver,
+			MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*MN, Inputs, Resolver,
 				FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 		}
 
@@ -8788,13 +8833,13 @@ FMonolithActionResult FMonolithNiagaraActions::HandleGetDynamicInputValue(const 
 	{
 		FVersionedNiagaraEmitter VE = System->GetEmitterHandles()[EmitterIdx].GetInstance();
 		FCompileConstantResolver Resolver(VE, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*DynNode, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*DynNode, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 	else
 	{
 		FCompileConstantResolver Resolver(System, FoundUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*DynNode, Inputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*DynNode, Inputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 
@@ -11581,13 +11626,13 @@ FMonolithActionResult FMonolithNiagaraActions::HandleCloneModuleOverrides(const 
 	{
 		FVersionedNiagaraEmitter VE = System->GetEmitterHandles()[SrcEmitterIdx].GetInstance();
 		FCompileConstantResolver Resolver(VE, SrcUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*SrcNode, SrcInputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*SrcNode, SrcInputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 	else
 	{
 		FCompileConstantResolver Resolver(System, SrcUsage);
-		FNiagaraStackGraphUtilities::GetStackFunctionInputs(*SrcNode, SrcInputs, Resolver,
+		MonolithNiagaraHelpers::GetStackFunctionInputsCompat(*SrcNode, SrcInputs, Resolver,
 			FNiagaraStackGraphUtilities::ENiagaraGetStackFunctionInputPinsOptions::ModuleInputsOnly, false);
 	}
 
